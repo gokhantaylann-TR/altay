@@ -22,6 +22,22 @@ self.addEventListener("fetch", e => {
     caches.match(e.request).then(r => r || fetch(e.request))
   );
 });
+this.diamonds = this.physics.add.group({ allowGravity:false });
+
+for(let i=0;i<10;i++){
+ const b = this.bricks.create(
+   600+i*350,
+   400-Phaser.Math.Between(0,200),
+   "brick"
+ );
+
+ const d = this.diamonds.create(0,0,"diamond")
+   .setScale(0.25)
+   .setDepth(5);
+
+ d.brick = b;
+}
+
 // Elmasları tuğlanın üstünde sabitle
 this.diamonds.children.iterate(d=>{
  if(d && d.brick && d.brick.active){
@@ -29,4 +45,5 @@ this.diamonds.children.iterate(d=>{
    d.y = d.brick.y - d.brick.height/2 - 8;
  }
 });
+
 
