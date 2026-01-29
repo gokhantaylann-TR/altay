@@ -1,0 +1,21 @@
+{
+  "name": "Altay'ın Macerası",
+  "short_name": "Altay",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "https://labs.phaser.io/assets/sprites/phaser-dude.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://labs.phaser.io/assets/sprites/phaser-dude.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

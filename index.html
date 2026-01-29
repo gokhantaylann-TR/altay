@@ -2,142 +2,319 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Altay'ın Macerası</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 <style>
-    body{margin:0;background:#000;overflow:hidden;touch-action:none;}
-    /* Mobilde metin seçimini engelle */
-    canvas { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; background: #000; overflow: hidden; touch-action: none; }
+    canvas { display: block; margin: 0 auto; }
 </style>
 </head>
 <body>
 
 <script>
 /* ================= GLOBAL ================= */
-const WIDTH=800, HEIGHT=600;
-const WORLD_WIDTH=5200;
-let soundEnabled=true;
+const WIDTH = 800, HEIGHT = 600;
+const WORLD_WIDTH = 5200;
+let soundEnabled = true;
 
 /* ================= CONFIG ================= */
-const config={
-    type:Phaser.AUTO,
-    width:WIDTH,
-    height:HEIGHT,
-    scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},
-    physics:{default:'arcade',arcade:{gravity:{y:1400}, debug: false}}, // Debug false yaptım
-    input: { activePointers: 3 }, // Multitouch için (aynı anda koşup zıplamak için)
-    scene:[MapScene,Level1Scene]
+const config = {
+    type: Phaser.AUTO,
+    width: WIDTH,
+    height: HEIGHT,
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    physics: { default: 'arcade', arcade: { gravity: { y: 1400 }, debug: false } },
+    scene: [MapScene, Level1Scene]
 };
-new Phaser.Game(config);
+
+const game = new Phaser.Game(config);
 
 /* ================= MAP SCENE ================= */
-function MapScene(){ Phaser.Scene.call(this,{key:'MapScene'}); }
-MapScene.prototype=Object.create(Phaser.Scene.prototype);
+function MapScene() { Phaser.Scene.call(this, { key: 'MapScene' }); }
+MapScene.prototype = Object.create(Phaser.Scene.prototype);
 
-MapScene.prototype.preload=function(){
-    this.load.image('map','https://labs.phaser.io/assets/skies/space3.png');
+MapScene.prototype.preload = function() {
+    this.load.image('map', 'https://labs.phaser.io/assets/skies/space3.png');
 };
 
-MapScene.prototype.create=function(){
-    this.add.image(400,300,'map');
-    this.add.text(240,200,'ALTAY\'IN MACERASI',{fontSize:'36px',color:'#fff', fontStyle:'bold'});
-    const btn=this.add.text(300,300,'▶ OYUNA BAŞLA',{fontSize:'32px',backgroundColor:'#00aa00',padding:15})
-     .setInteractive();
-    btn.on('pointerdown',()=>this.scene.start('Level1Scene'));
+MapScene.prototype.create = function() {
+    this.add.image(400, 300, 'map');
+    this.add.text(WIDTH/2, 200, 'ALTAY\'IN MACERASI', { fontSize: '42px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+    
+    const btn = this.add.text(WIDTH/2, 350, '▶ BAŞLA', { 
+        fontSize: '32px', backgroundColor: '#ffffff33', padding: { x: 20, y: 10 } 
+    }).setOrigin(0.5).setInteractive();
+
+    btn.on('pointerdown', () => this.scene.start('Level1Scene'));
 };
 
 /* ================= LEVEL 1 ================= */
-function Level1Scene(){ Phaser.Scene.call(this,{key:'Level1Scene'}); }
-Level1Scene.prototype=Object.create(Phaser.Scene.prototype);
+function Level1Scene() { Phaser.Scene.call(this, { key: 'Level1Scene' }); }
+Level1Scene.prototype = Object.create(Phaser.Scene.prototype);
 
-Level1Scene.prototype.preload=function(){
-    this.load.image('sky','https://labs.phaser.io/assets/skies/sky4.png');
-    this.load.image('ground','https://labs.phaser.io/assets/sprites/platform.png');
-    this.load.image('enemy','https://labs.phaser.io/assets/sprites/phaser-dude.png');
-    this.load.image('flag','https://labs.phaser.io/assets/sprites/flag.png');
-    this.load.image('fireball','https://labs.phaser.io/assets/sprites/bullets/bullet1.png');
+Level1Scene.prototype.preload = function() {
+    this.load.image('sky', 'https://labs.phaser.io/assets/skies/sky4.png');
+    this.load.image('ground', 'https://labs.phaser.io/assets/sprites/platform.png');
+    this.load.image('enemy', 'https://labs.phaser.io/assets/sprites/phaser-dude.png');
+    this.load.image('flag', 'https://labs.phaser.io/assets/sprites/flag.png');
+    // Ateş efekti
+    this.load.image('fireball', 'https://labs.phaser.io/assets/sprites/bullets/bullet1.png');
 
-    this.load.spritesheet('altay',
-     'https://labs.phaser.io/assets/sprites/dude.png',
-     {frameWidth:32,frameHeight:48}
+    // Altay Sprite
+    this.load.spritesheet('altay', 
+        'https://labs.phaser.io/assets/sprites/dude.png', 
+        { frameWidth: 32, frameHeight: 48 }
     );
 
-    this.load.audio('bgm','https://labs.phaser.io/assets/audio/tech/techno_01.mp3');
-    this.load.audio('hit','https://labs.phaser.io/assets/audio/SoundEffects/explosion.mp3');
+    this.load.audio('bgm', 'https://labs.phaser.io/assets/audio/tech/techno_01.mp3');
+    this.load.audio('hit', 'https://labs.phaser.io/assets/audio/SoundEffects/explosion.mp3');
+    this.load.audio('shoot', 'https://labs.phaser.io/assets/audio/SoundEffects/player_shoot.wav'); // Ateş sesi (örnek)
 };
 
-Level1Scene.prototype.create=function(){
-    this.lives=3;
-    this.checkpointX=100;
-
-    // Kontrol Bayrakları (Mobilde basılı tutmayı algılamak için)
-    this.isLeftDown = false;
-    this.isRightDown = false;
-    this.isJumpDown = false;
-
-    this.physics.world.setBounds(0,0,WORLD_WIDTH,HEIGHT);
-    this.add.tileSprite(0,0,WORLD_WIDTH,HEIGHT,'sky').setOrigin(0);
+Level1Scene.prototype.create = function() {
+    this.lives = 3;
+    this.checkpointX = 100;
+    
+    // Dünya Sınırları
+    this.physics.world.setBounds(0, 0, WORLD_WIDTH, HEIGHT);
+    this.add.tileSprite(0, 0, WORLD_WIDTH, HEIGHT, 'sky').setOrigin(0).setScrollFactor(0);
 
     /* Zemin */
-    this.platforms=this.physics.add.staticGroup();
-    for(let i=0;i<WORLD_WIDTH/400;i++)
-     this.platforms.create(400*i+200,568,'ground').setScale(2).refreshBody();
+    this.platforms = this.physics.add.staticGroup();
+    for (let i = 0; i < WORLD_WIDTH / 400 + 2; i++) {
+        this.platforms.create(400 * i + 200, 568, 'ground').setScale(2).refreshBody();
+    }
+    // Rastgele havada platformlar
+    this.platforms.create(600, 400, 'ground');
+    this.platforms.create(1200, 350, 'ground');
+    this.platforms.create(2800, 300, 'ground');
 
     /* Altay */
-    this.altay=this.physics.add.sprite(100,450,'altay');
+    this.altay = this.physics.add.sprite(100, 450, 'altay');
     this.altay.setCollideWorldBounds(true);
+    this.altay.setBounce(0.1);
 
     /* Kamera */
-    this.cameras.main.setBounds(0,0,WORLD_WIDTH,HEIGHT);
-    this.cameras.main.startFollow(this.altay,true,0.08,0.08);
+    this.cameras.main.setBounds(0, 0, WORLD_WIDTH, HEIGHT);
+    this.cameras.main.startFollow(this.altay, true, 0.08, 0.08);
 
-    /* Düşmanlar & Boss */
-    this.enemies=this.physics.add.group();
+    /* Ateş Topları Grubu */
+    this.fireballs = this.physics.add.group({
+        defaultKey: 'fireball',
+        maxSize: 10
+    });
+
+    /* Düşmanlar */
+    this.enemies = this.physics.add.group();
     this.spawnEnemy(800);
     this.spawnEnemy(1600);
-    this.spawnEnemy(2600);
+    this.spawnEnemy(2400);
 
-    this.boss=this.physics.add.sprite(WORLD_WIDTH-500,420,'enemy').setScale(2);
-    this.boss.hp=3; // Boss canı
+    /* Boss */
+    this.boss = this.physics.add.sprite(WORLD_WIDTH - 600, 400, 'enemy').setScale(3).setTint(0xff0000);
+    this.boss.hp = 5; // Boss canı
+    this.boss.body.allowGravity = false; // Boss uçsun/süzülsün
 
-    /* Objeler */
-    this.flag=this.physics.add.staticSprite(3000,430,'flag');
-    this.fireballs=this.physics.add.group();
+    /* Checkpoint */
+    this.flag = this.physics.add.staticSprite(WORLD_WIDTH - 2000, 480, 'flag').setScale(1.5);
 
     /* Çarpışmalar */
-    this.physics.add.collider(this.altay,this.platforms);
-    this.physics.add.collider(this.enemies,this.platforms);
-    this.physics.add.collider(this.boss,this.platforms);
-    this.physics.add.overlap(this.altay,this.enemies,this.playerHit,null,this);
-    this.physics.add.overlap(this.altay,this.boss,this.playerHit,null,this);
-    this.physics.add.overlap(this.fireballs,this.boss,this.hitBoss,null,this);
-    this.physics.add.overlap(this.altay,this.flag,this.setCheckpoint,null,this);
+    this.physics.add.collider(this.altay, this.platforms);
+    this.physics.add.collider(this.enemies, this.platforms);
+    // this.physics.add.collider(this.boss, this.platforms); // Boss duvarlara çarpmasın
 
-    /* Animasyon */
-    this.anims.create({
-     key:'run',
-     frames:this.anims.generateFrameNumbers('altay',{start:0,end:3}),
-     frameRate:10,
-     repeat:-1
-    });
-    this.anims.create({
-     key:'idle',
-     frames:[{key:'altay', frame:4}],
-     frameRate:20
-    });
+    // Etkileşimler
+    this.physics.add.overlap(this.altay, this.enemies, this.playerHit, null, this);
+    this.physics.add.overlap(this.altay, this.boss, this.playerHit, null, this);
+    this.physics.add.overlap(this.fireballs, this.boss, this.hitBoss, null, this);
+    this.physics.add.overlap(this.fireballs, this.enemies, this.hitEnemy, null, this);
+    this.physics.add.overlap(this.altay, this.flag, this.setCheckpoint, null, this);
+
+    /* Animasyonlar */
+    if(!this.anims.exists('run')) {
+        this.anims.create({
+            key: 'run',
+            frames: this.anims.generateFrameNumbers('altay', { start: 5, end: 8 }),
+            frameRate: 10,
+            repeat: -1
+        });
+        this.anims.create({
+            key: 'idle',
+            frames: [ { key: 'altay', frame: 4 } ],
+            frameRate: 20
+        });
+    }
+
+    /* Kontroller */
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
     /* Ses */
-    this.bgm=this.sound.add('bgm',{loop:true,volume:0.3});
-    this.hitSfx=this.sound.add('hit');
-    // Oyun başlayınca bir kere tıklandığında müziği başlat
-    this.input.once('pointerdown',()=>{ 
-        if(soundEnabled && !this.bgm.isPlaying) this.bgm.play(); 
+    this.bgm = this.sound.add('bgm', { loop: true, volume: 0.3 });
+    this.hitSfx = this.sound.add('hit');
+    this.input.once('pointerdown', () => { if (soundEnabled && !this.bgm.isPlaying) this.bgm.play(); });
+
+    /* UI */
+    this.createUI();
+};
+
+Level1Scene.prototype.update = function() {
+    // Hareket
+    if (this.cursors.left.isDown) {
+        this.altay.setVelocityX(-220);
+        this.altay.anims.play('run', true);
+        this.altay.flipX = true;
+    } else if (this.cursors.right.isDown) {
+        this.altay.setVelocityX(220);
+        this.altay.anims.play('run', true);
+        this.altay.flipX = false;
+    } else {
+        this.altay.setVelocityX(0);
+        this.altay.anims.play('idle');
+    }
+
+    // Zıplama
+    if (this.cursors.up.isDown && this.altay.body.touching.down) {
+        this.altay.setVelocityY(-750);
+    }
+
+    // Ateş Etme
+    if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+        this.shootFireball();
+    }
+
+    // Düşman Yapay Zekası
+    this.enemies.children.iterate(e => {
+        if (e) {
+            // Basit devriye
+            if(Math.abs(e.x - this.altay.x) < 400) {
+                 // Oyuncu yakındaysa ona doğru git
+                 e.setVelocityX(this.altay.x < e.x ? -100 : 100);
+            } else {
+                 e.setVelocityX(Math.sin(this.time.now * 0.001 + e.x) * 60);
+            }
+        }
     });
 
-    /* --- KONTROLLER (PC & MOBİL) --- */
+    // Boss Hareketi
+    if(this.boss && this.boss.active) {
+        this.boss.x = (WORLD_WIDTH - 600) + Math.sin(this.time.now * 0.002) * 200;
+        this.boss.y = 400 + Math.cos(this.time.now * 0.005) * 100;
+    }
+};
+
+/* ================= LOGIC ================= */
+Level1Scene.prototype.spawnEnemy = function(x) {
+    let e = this.physics.add.sprite(x, 400, 'enemy');
+    e.setCollideWorldBounds(true);
+    e.setBounce(0.2);
+    this.enemies.add(e);
+};
+
+Level1Scene.prototype.shootFireball = function() {
+    let velocityX = this.altay.flipX ? -600 : 600;
+    let startX = this.altay.flipX ? this.altay.x - 30 : this.altay.x + 30;
+
+    let f = this.fireballs.create(startX, this.altay.y, 'fireball');
+    if(f) {
+        f.setVelocityX(velocityX);
+        f.body.allowGravity = false; // Mermi düz gitsin
+        // 1.5 sn sonra yok et
+        this.time.delayedCall(1500, () => { if(f.active) f.destroy(); });
+    }
+};
+
+Level1Scene.prototype.playerHit = function(p, e) {
+    // Boss ile çarpışma ayrı yönetilir, eğer e boss ise:
+    if(e === this.boss) {
+        this.takeDamage(p);
+        p.setVelocityX(p.x < e.x ? -300 : 300); // Geri tepme
+        return;
+    }
+
+    // Normal düşmana tepeden basma
+    if (p.body.touching.down && e.body.touching.up) {
+        e.destroy();
+        p.setVelocityY(-400);
+    } else {
+        this.takeDamage(p);
+    }
+};
+
+Level1Scene.prototype.takeDamage = function(p) {
+    this.lives--;
+    this.livesText.setText('❤️ x' + this.lives);
     
-    // 1. PC Klavye Tanımları (Create içinde yapılır, Update içinde değil!)
-    this.cursors = this.input.keyboard.createCursorKeys();
-    this.spaceKey =
+    if (soundEnabled) this.hitSfx.play();
     
+    p.setTint(0xff0000);
+    this.time.delayedCall(200, () => p.clearTint());
+
+    if (this.lives <= 0) {
+        this.physics.pause();
+        this.add.text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y, 'OYUN BİTTİ', {fontSize:'64px', backgroundColor:'#000'}).setOrigin(0.5);
+        this.time.delayedCall(2000, () => this.scene.start('MapScene'));
+    } else {
+        // Checkpoint'e dön
+        p.x = this.checkpointX;
+        p.y = 400;
+        p.setVelocity(0,0);
+    }
+};
+
+Level1Scene.prototype.hitBoss = function(f, b) {
+    f.destroy(); // Mermiyi yok et
+    b.hp--;
+    b.setTint(0xffaa00);
+    this.time.delayedCall(100, () => b.setTint(0xff0000));
+
+    if (soundEnabled) this.hitSfx.play();
+
+    if (b.hp <= 0) {
+        b.destroy();
+        const winText = this.add.text(b.x, b.y, 'ZAFER!', {fontSize:'48px', color:'#fff', fontStyle:'bold'}).setOrigin(0.5);
+        this.tweens.add({targets: winText, y: winText.y - 100, alpha: 0, duration: 2000});
+        this.time.delayedCall(3000, () => this.scene.start('MapScene'));
+    }
+};
+
+Level1Scene.prototype.hitEnemy = function(f, e) {
+    f.destroy();
+    e.destroy();
+    if(soundEnabled) this.hitSfx.play();
+};
+
+Level1Scene.prototype.setCheckpoint = function(p, f) {
+    if(this.checkpointX !== f.x) {
+        this.checkpointX = f.x;
+        f.setTint(0x00ff00); // Bayrak yeşil olsun
+        this.add.text(f.x, f.y-50, 'KAYDEDİLDİ', {fontSize:'16px'}).destroy({time:1000}); // Geçici metin değil tween ile yok et
+    }
+};
+
+/* ================= UI ================= */
+Level1Scene.prototype.createUI = function() {
+    const soundBtn = this.add.text(740, 20, '🔊', { fontSize: '32px' })
+        .setScrollFactor(0).setInteractive();
+        
+    soundBtn.on('pointerdown', () => {
+        soundEnabled = !soundEnabled;
+        soundBtn.setText(soundEnabled ? '🔊' : '🔇');
+        this.sound.mute = !soundEnabled;
+    });
+
+    this.livesText = this.add.text(20, 20, '❤️ x' + this.lives, { fontSize: '24px' }).setScrollFactor(0);
+    
+    this.add.text(WIDTH/2, 20, 'Ateş: BOŞLUK | Hareket: YÖN TUŞLARI', {fontSize:'14px', color:'#aaa'}).setScrollFactor(0).setOrigin(0.5);
+};
+
+// Service Worker Kaydı
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(() => console.log('SW Hazır'));
+}
+</script>
+</body>
+</html>
