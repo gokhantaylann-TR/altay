@@ -4,237 +4,116 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Altay’ın Macerası</title>
-
 <link rel="manifest" href="manifest.json">
-
 <style>
-body {
-    margin: 0;
-    background: #6ec6ff;
-    overflow: hidden;
-    font-family: monospace;
-}
-
-/* On-screen controls */
-.controls {
-    position: fixed;
-    bottom: 10px;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: space-between;
-    padding: 0 20px;
-    pointer-events: none;
-}
-
-.controls button {
-    pointer-events: auto;
-    width: 64px;
-    height: 64px;
-    font-size: 24px;
-    border-radius: 50%;
-    border: none;
-    background: rgba(0,0,0,0.5);
-    color: white;
-}
-
-.top-controls {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    display: flex;
-    gap: 10px;
-}
-
-.top-controls button {
-    width: 44px;
-    height: 44px;
-    font-size: 18px;
-    border-radius: 8px;
-    border: none;
-    background: rgba(0,0,0,0.5);
-    color: white;
-}
+body { margin:0; background:#6ec6ff; overflow:hidden; font-family:monospace; }
+.controls { position:fixed; bottom:10px; left:0; right:0; display:flex; justify-content:space-between; padding:0 20px; pointer-events:none; }
+.controls button { pointer-events:auto; width:64px; height:64px; font-size:24px; border-radius:50%; border:none; background:rgba(0,0,0,0.5); color:white; }
+.top-controls { position:fixed; top:10px; right:10px; display:flex; gap:10px; }
+.top-controls button { width:44px; height:44px; font-size:18px; border-radius:8px; border:none; background:rgba(0,0,0,0.5); color:white; }
 </style>
-
 <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
 </head>
 <body>
 
 <div class="top-controls">
-    <button id="pauseBtn">⏸</button>
-    <button id="soundBtn">🔊</button>
+  <button id="pauseBtn">⏸</button>
+  <button id="soundBtn">🔊</button>
 </div>
 
 <div class="controls">
-    <button id="leftBtn">⬅️</button>
-    <button id="jumpBtn">⬆️</button>
-    <button id="rightBtn">➡️</button>
+  <button id="leftBtn">⬅️</button>
+  <button id="jumpBtn">⬆️</button>
+  <button id="rightBtn">➡️</button>
 </div>
 
 <script>
-let soundEnabled = true;
-let paused = false;
-let level = 1;
+let soundEnabled=true, paused=false;
 
 class GameScene extends Phaser.Scene {
-    constructor() { super('game'); }
-
-    preload() {
-        /* Basit 8-bit grafikler (canvas ile) */
-        this.textures.generate('altay', { data:[
-            ' 333 ',
-            ' 393 ',
-            ' 333 ',
-            '  9  ',
-            ' 999 '
-        ], pixelWidth: 8 });
-
-        this.textures.generate('duck', { data:[
-            ' 22 ',
-            '2222',
-            ' 22 '
-        ], pixelWidth: 8 });
-
-        this.textures.generate('brick', { data:['8888'], pixelWidth: 8 });
-
-        this.textures.generate('diamond', { data:[
-            ' 4 ',
-            '444',
-            ' 4 '
-        ], pixelWidth: 6 });
-
-        this.textures.generate('cloud', { data:[
-            ' 777 ',
-            '77777',
-            ' 777 '
-        ], pixelWidth: 8 });
-
-        this.textures.generate('castle', { data:[
-            '55555555',
-            '56666665',
-            '56666665',
-            '56666665',
-            '55555555',
-            '   1    '
-        ], pixelWidth: 16 });
-
-        /* Sesler */
-        this.load.audio('jump', 'https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg');
-        this.load.audio('coin', 'https://actions.google.com/sounds/v1/cartoon/pop.ogg');
-        this.load.audio('win',  'https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
+    constructor(){ super('game'); }
+    preload(){
+        // Sprite Sheet Örnek (Phaser Lab Sprite)
+        this.load.spritesheet('altay','https://labs.phaser.io/assets/sprites/dude.png',{frameWidth:32,frameHeight:48});
+        this.load.image('brick','https://labs.phaser.io/assets/sprites/block.png');
+        this.load.image('cloud','https://labs.phaser.io/assets/skies/cloud.png');
+        this.load.image('diamond','https://labs.phaser.io/assets/sprites/mushroom2.png');
+        this.load.image('duck','https://labs.phaser.io/assets/sprites/phaser-dude.png');
+        this.load.image('castle','https://labs.phaser.io/assets/sprites/platform.png');
+        // Sesler
+        this.load.audio('jump','https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg');
+        this.load.audio('coin','https://actions.google.com/sounds/v1/cartoon/pop.ogg');
+        this.load.audio('stomp','https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
+        this.load.audio('win','https://actions.google.com/sounds/v1/cartoon/escape.ogg');
     }
+    create(){
+        this.physics.world.setBounds(0,0,1600,600);
+        this.add.tileSprite(0,0,1600,600,'cloud').setOrigin(0).setScrollFactor(0.2);
 
-    create() {
-        /* Bulutlar */
-        for (let i=0;i<4;i++){
-            let c = this.add.image(200 + i*250, 80 + Phaser.Math.Between(-10,10), 'cloud');
-            c.setScrollFactor(0.2);
-        }
+        // Platform
+        this.platforms=this.physics.add.staticGroup();
+        for(let i=0;i<20;i++) this.platforms.create(80*i,550,'brick').setScale(2).refreshBody();
 
-        /* Platformlar */
-        this.platforms = this.physics.add.staticGroup();
-        for (let i=0;i<12;i++){
-            this.platforms.create(64*i, 360, 'brick').setScale(2).refreshBody();
-        }
-
-        /* Elmaslar */
-        this.diamonds = this.physics.add.group();
-        for (let i=1;i<10;i+=2){
-            let d = this.diamonds.create(64*i, 300, 'diamond');
+        // Diamonds
+        this.diamonds=this.physics.add.group();
+        for(let i=2;i<10;i+=2){
+            let d=this.diamonds.create(80*i,500,'diamond');
             d.body.setSize(12,12);
         }
 
-        /* Altay */
-        this.player = this.physics.add.sprite(100, 280, 'altay').setScale(2);
+        // Player
+        this.player=this.physics.add.sprite(100,450,'altay').setScale(1.5);
         this.player.setCollideWorldBounds(true);
 
-        /* Ördek düşmanlar */
-        this.enemies = this.physics.add.group();
-        let duck = this.enemies.create(400, 300, 'duck').setScale(1.8);
-        duck.setVelocityX(60);
-        duck.direction = 1;
+        this.anims.create({key:'left',frames:this.anims.generateFrameNumbers('altay',{start:0,end:3}),frameRate:10,repeat:-1});
+        this.anims.create({key:'right',frames:this.anims.generateFrameNumbers('altay',{start:5,end:8}),frameRate:10,repeat:-1});
+        this.anims.create({key:'idle',frames:[{key:'altay',frame:4}]});
 
-        /* Şato */
-        this.castle = this.physics.add.staticImage(700, 250, 'castle').setScale(3);
+        // Enemy
+        this.enemies=this.physics.add.group();
+        let duck=this.enemies.create(400,500,'duck').setScale(1);
+        duck.setVelocityX(50); duck.dir=1;
 
-        /* Çarpışmalar */
-        this.physics.add.collider(this.player, this.platforms);
-        this.physics.add.collider(this.enemies, this.platforms);
-        this.physics.add.overlap(this.player, this.diamonds, this.collectDiamond, null, this);
-        this.physics.add.overlap(this.player, this.castle, this.finishLevel, null, this);
+        // Castle
+        this.castle=this.physics.add.staticImage(1400,450,'castle').setScale(3);
 
-        /* Kontroller */
-        this.cursors = this.input.keyboard.createCursorKeys();
+        // Colliders
+        this.physics.add.collider(this.player,this.platforms);
+        this.physics.add.collider(this.enemies,this.platforms);
+        this.physics.add.overlap(this.player,this.diamonds,this.collectDiamond,null,this);
+        this.physics.add.overlap(this.player,this.castle,this.finishLevel,null,this);
 
-        /* UI */
-        document.getElementById('pauseBtn').onclick = () => {
-            paused = !paused;
-            this.scene.pause(paused ? 'game' : null);
-        };
-
-        document.getElementById('soundBtn').onclick = () => {
-            soundEnabled = !soundEnabled;
-            document.getElementById('soundBtn').textContent = soundEnabled ? '🔊' : '🔇';
-        };
-
-        document.getElementById('leftBtn').ontouchstart = () => this.player.setVelocityX(-160);
-        document.getElementById('rightBtn').ontouchstart = () => this.player.setVelocityX(160);
-        document.getElementById('jumpBtn').ontouchstart = () => {
-            if (this.player.body.touching.down) {
-                this.player.setVelocityY(-330);
-                if (soundEnabled) this.sound.play('jump');
-            }
+        // Controls
+        this.cursors=this.input.keyboard.createCursorKeys();
+        document.getElementById('pauseBtn').onclick=()=>{ paused=!paused; paused ? this.physics.pause() : this.physics.resume(); };
+        document.getElementById('soundBtn').onclick=()=>{ soundEnabled=!soundEnabled; document.getElementById('soundBtn').textContent=soundEnabled?'🔊':'🔇'; };
+        document.getElementById('leftBtn').ontouchstart=()=>{this.player.setVelocityX(-160);};
+        document.getElementById('rightBtn').ontouchstart=()=>{this.player.setVelocityX(160);};
+        document.getElementById('jumpBtn').ontouchstart=()=>{
+            if(this.player.body.touching.down){ this.player.setVelocityY(-350); if(soundEnabled) this.sound.play('jump'); }
         };
     }
+    update(){
+        if(paused) return;
+        if(this.cursors.left.isDown) { this.player.setVelocityX(-160); this.player.anims.play('left',true); }
+        else if(this.cursors.right.isDown) { this.player.setVelocityX(160); this.player.anims.play('right',true); }
+        else { this.player.setVelocityX(0); this.player.anims.play('idle'); }
 
-    update() {
-        if (this.cursors.left.isDown) this.player.setVelocityX(-160);
-        else if (this.cursors.right.isDown) this.player.setVelocityX(160);
-        else this.player.setVelocityX(0);
+        if(this.cursors.up.isDown && this.player.body.touching.down){ this.player.setVelocityY(-350); if(soundEnabled) this.sound.play('jump'); }
 
-        if (this.cursors.up.isDown && this.player.body.touching.down) {
-            this.player.setVelocityY(-330);
-            if (soundEnabled) this.sound.play('jump');
-        }
-
-        /* Ördek AI */
-        this.enemies.children.iterate(d => {
-            if (!d) return;
-            if (d.x < 300) { d.setVelocityX(60); d.flipX=false; }
-            if (d.x > 500) { d.setVelocityX(-60); d.flipX=true; }
+        // Enemy AI
+        this.enemies.children.iterate(d=>{
+            if(!d) return;
+            if(d.x<400){ d.setVelocityX(50); d.dir=1; d.flipX=false; }
+            if(d.x>800){ d.setVelocityX(-50); d.dir=-1; d.flipX=true; }
         });
     }
-
-    collectDiamond(player, diamond){
-        diamond.destroy();
-        if (soundEnabled) this.sound.play('coin');
-    }
-
-    finishLevel(){
-        if (soundEnabled) this.sound.play('win');
-        level++;
-        this.scene.restart();
-    }
+    collectDiamond(player,diamond){ diamond.destroy(); if(soundEnabled) this.sound.play('coin'); }
+    finishLevel(){ if(soundEnabled) this.sound.play('win'); alert('🎉 Bölüm Tamam!'); }
 }
 
-const config = {
-    type: Phaser.AUTO,
-    width: 800,
-    height: 400,
-    physics: {
-        default: 'arcade',
-        arcade: { gravity: { y: 600 }, debug: false }
-    },
-    scene: GameScene
-};
-
+const config={type:Phaser.AUTO,width:800,height:600,physics:{default:'arcade',arcade:{gravity:{y:600},debug:false}},scene:GameScene};
 new Phaser.Game(config);
-
-/* Service Worker */
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-}
 </script>
 </body>
 </html>
