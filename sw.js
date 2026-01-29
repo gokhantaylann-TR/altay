@@ -22,3 +22,11 @@ self.addEventListener("fetch", e => {
     caches.match(e.request).then(r => r || fetch(e.request))
   );
 });
+// Elmasları tuğlanın üstünde sabitle
+this.diamonds.children.iterate(d=>{
+ if(d && d.brick && d.brick.active){
+   d.x = d.brick.x;
+   d.y = d.brick.y - d.brick.height/2 - 8;
+ }
+});
+
