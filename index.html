@@ -30,6 +30,13 @@ let mobile={left:false,right:false,jump:false,fire:false};
  document.getElementById(k).ontouchend=()=>mobile[k]=false;
 });
 
+function saveGame(level,score){
+ localStorage.setItem("altay_save",JSON.stringify({level,score}));
+}
+function loadGame(){
+ return JSON.parse(localStorage.getItem("altay_save"));
+}
+
 /* ================= MENU ================= */
 class Menu extends Phaser.Scene{
  constructor(){super("Menu")}
@@ -37,8 +44,17 @@ class Menu extends Phaser.Scene{
  create(){
   this.add.image(400,300,"menuBg");
   this.add.text(400,180,"ALTAY'IN MACERASI",{fontSize:40,color:"#fff"}).setOrigin(0.5);
-  const b=this.add.text(400,300,"▶ BAŞLA",{fontSize:32,backgroundColor:"#000",padding:10}).setOrigin(0.5).setInteractive();
-  b.on("pointerdown",()=>this.scene.start("Level",{level:1,score:0}));
+
+  const saved=loadGame();
+  const txt=saved?"▶ DEVAM ET":"▶ BAŞLA";
+
+  const b=this.add.text(400,300,txt,{fontSize:32,backgroundColor:"#000",padding:10})
+  .setOrigin(0.5).setInteractive();
+
+  b.on("pointerdown",()=>{
+    if(saved) this.scene.start("Level",saved);
+    else this.scene.start("Level",{level:1,score:0});
+  });
  }
 }
 
@@ -55,9 +71,13 @@ class Level extends Phaser.Scene{
   this.load.image("brick","https://labs.phaser.io/assets/sprites/block.png");
   this.load.image("diamond","https://labs.phaser.io/assets/sprites/gem.png");
   this.load.image("castle","https://labs.phaser.io/assets/sprites/castle.png");
-  this.load.image("enemy","https://labs.phaser.io/assets/sprites/robot.png");
+  this.load.image("duck","https://labs.phaser.io/assets/sprites/duck.png");
+  this.load.image("spike","https://labs.phaser.io/assets/sprites/spikedball.png");
   this.load.image("bullet","https://labs.phaser.io/assets/sprites/bullets/bullet1.png");
+
   this.load.spritesheet("altay","https://labs.phaser.io/assets/sprites/dude.png",{frameWidth:32,frameHeight:48});
+
+  this.load.audio("bgm","https://files.catbox.moe/3p7tuj.mp3"); // mario style loop
  }
 
  create(){
@@ -72,13 +92,17 @@ class Level extends Phaser.Scene{
    this.platforms.create(i*350+200,560,"ground").setScale(2).refreshBody();
 
   this.bricks=this.physics.add.staticGroup();
-  for(let i=0;i<10;i++)
-   this.bricks.create(600+i*350,400-Phaser.Math.Between(0,200),"brick");
-
   this.diamonds=this.physics.add.group({allowGravity:false});
-  this.bricks.children.iterate(b=>{
-   this.diamonds.create(b.x,b.y-40,"diamond");
-  });
+
+  for(let i=0;i<10;i++){
+   const b=this.bricks.create(600+i*350,400-Phaser.Math.Between(0,200),"brick");
+   const d=this.diamonds.create(b.x,b.y-25,"diamond").setScale(0.35);
+   d.brick=b;
+  }
+
+  this.spikes=this.physics.add.staticGroup();
+  for(let i=1;i<=6;i++)
+   this.spikes.create(900*i,545,"spike").setScale(0.6);
 
   this.castle=this.physics.add.staticSprite(WORLD_WIDTH-200,470,"castle").setScale(0.8);
 
@@ -98,6 +122,7 @@ class Level extends Phaser.Scene{
 
   this.physics.add.overlap(this.player,this.diamonds,this.collectDiamond,null,this);
   this.physics.add.overlap(this.player,this.enemies,this.playerHit,null,this);
+  this.physics.add.overlap(this.player,this.spikes,this.playerHit,null,this);
   this.physics.add.overlap(this.bullets,this.enemies,this.killEnemy,null,this);
   this.physics.add.overlap(this.player,this.castle,this.nextLevel,null,this);
 
@@ -110,19 +135,29 @@ class Level extends Phaser.Scene{
   this.scoreText=this.add.text(20,20,"💎 "+this.score,{fontSize:22}).setScrollFactor(0);
   this.levelText=this.add.text(350,20,"Bölüm "+this.level,{fontSize:18}).setScrollFactor(0);
 
+  this.music=this.sound.add("bgm",{loop:true,volume:0.4});
+  if(soundEnabled) this.music.play();
+
   const snd=this.add.text(750,20,"🔊",{fontSize:26}).setScrollFactor(0).setInteractive();
-  snd.on("pointerdown",()=>{soundEnabled=!soundEnabled; this.sound.mute=!soundEnabled; snd.setText(soundEnabled?"🔊":"🔇")});
+  snd.on("pointerdown",()=>{
+    soundEnabled=!soundEnabled;
+    this.sound.mute=!soundEnabled;
+    snd.setText(soundEnabled?"🔊":"🔇");
+  });
  }
 
  spawnEnemy(x){
-  const e=this.physics.add.sprite(x,450,"enemy");
-  e.speed=Phaser.Math.Between(60,120);
+  const e=this.physics.add.sprite(x,450,"duck").setScale(0.6);
+  e.speed=Phaser.Math.Between(70,130);
   this.enemies.add(e);
  }
 
  breakBrick(p,b){
   if(p.body.velocity.y>0){
    b.destroy();
+   this.diamonds.children.iterate(d=>{
+    if(d.brick===b) d.destroy();
+   });
    this.player.setVelocityY(-650);
   }
  }
@@ -138,10 +173,12 @@ class Level extends Phaser.Scene{
  }
 
  playerHit(){
+  saveGame(this.level,this.score);
   this.scene.restart({level:this.level,score:this.score});
  }
 
  nextLevel(){
+  saveGame(this.level+1,this.score);
   this.scene.start("Level",{level:this.level+1,score:this.score});
  }
 
