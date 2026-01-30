@@ -10,6 +10,15 @@
 <meta name="mobile-web-app-capable" content="yes">
 
 <title>Altay'ın Büyük Macerası</title>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then((reg) => console.log('Service Worker kayıt edildi:', reg.scope))
+        .catch((err) => console.log('Service Worker hatası:', err));
+    });
+  }
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 
