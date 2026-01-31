@@ -1,35 +1,107 @@
-// BURADAKİ İSMİ DEĞİŞTİRİYORUZ Kİ TELEFON YENİ KODU GÖRSÜN
-const CACHE_NAME = 'altay-tam-surum-v1'; 
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-const ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  'https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js',
-  'https://labs.phaser.io/assets/skies/space3.png',
-  'https://labs.phaser.io/assets/sprites/platform.png',
-  'https://labs.phaser.io/assets/sprites/diamond.png',
-  'https://labs.phaser.io/assets/sprites/dude.png',
-  'https://labs.phaser.io/assets/sprites/baddie.png'
-];
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(ASSETS)));
+let gravity = 0.7;
+let levelData;
+let firePower = false;
+let starCollected = false;
+
+const player = {
+    x: 50,
+    y: 100,
+    w: 32,
+    h: 48,
+    vx: 0,
+    vy: 0,
+    onGround: false
+};
+
+let platforms = [];
+let diamond = {};
+let star = {};
+
+fetch("levels.json")
+.then(res => res.json())
+.then(data => {
+    levelData = data.levels[0];
+    platforms = levelData.platforms;
+    diamond = levelData.diamond;
+    star = levelData.star;
 });
 
-self.addEventListener('fetch', (e) => {
-  e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
-});
+function drawPlayer() {
+    ctx.fillStyle = firePower ? "orange" : "#4da6ff";
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+}
 
-// Eski önbellekleri temizle (Telefonda yer açar ve güncel tutar)
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keyList) => {
-      return Promise.all(keyList.map((key) => {
-        if (key !== CACHE_NAME) {
-          return caches.delete(key);
+function drawPlatforms() {
+    ctx.fillStyle = "#666";
+    platforms.forEach(p => {
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+    });
+}
+
+function drawDiamond() {
+    ctx.fillStyle = "cyan";
+    ctx.beginPath();
+    ctx.arc(diamond.x, diamond.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawStar() {
+    if (starCollected) return;
+    ctx.fillStyle = "yellow";
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, 10, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function update() {
+    player.vy += gravity;
+    player.y += player.vy;
+    player.onGround = false;
+
+    platforms.forEach(p => {
+        if (
+            player.x < p.x + p.w &&
+            player.x + player.w > p.x &&
+            player.y + player.h < p.y + 20 &&
+            player.y + player.h + player.vy >= p.y
+        ) {
+            player.y = p.y - player.h;
+            player.vy = 0;
+            player.onGround = true;
         }
-      }));
-    })
-  );
+    });
+
+    // Diamond
+    if (Math.abs(player.x - diamond.x) < 20 && Math.abs(player.y - diamond.y) < 20) {
+        diamond.x = -100;
+    }
+
+    // Star (only once)
+    if (!starCollected && Math.abs(player.x - star.x) < 20 && Math.abs(player.y - star.y) < 20) {
+        starCollected = true;
+        firePower = true;
+        setTimeout(() => firePower = false, 5000);
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawPlatforms();
+    drawDiamond();
+    drawStar();
+    drawPlayer();
+
+    requestAnimationFrame(update);
+}
+
+window.addEventListener("touchstart", () => {
+    if (player.onGround) {
+        player.vy = -14;
+    }
 });
+
+update();
