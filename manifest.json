@@ -1,10 +1,13 @@
 {
-  "name": "Altay Oyunu",
-  "short_name": "Altay",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
-  "orientation": "landscape",
-  "icons": []
+  "levels": [
+    {
+      "platforms": [
+        { "x": 0, "y": 350, "w": 800, "h": 40 },
+        { "x": 200, "y": 280, "w": 120, "h": 20 },
+        { "x": 420, "y": 230, "w": 120, "h": 20 }
+      ],
+      "diamond": { "x": 460, "y": 190 },
+      "star": { "x": 230, "y": 240 }
+    }
+  ]
 }
